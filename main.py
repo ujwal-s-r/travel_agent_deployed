@@ -44,6 +44,12 @@ class TripRequest(BaseModel):
         }
 
 
+class AttractionWithCoords(BaseModel):
+    name: str
+    latitude: float
+    longitude: float
+
+
 class ChatResponse(BaseModel):
     response: str
     success: bool
@@ -53,9 +59,18 @@ class ChatResponse(BaseModel):
     place: Optional[str] = None
     has_weather: Optional[bool] = None
     has_places: Optional[bool] = None
+    
+    # Coordinates
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    
+    # Weather
     temperature: Optional[float] = None
     precipitation_chance: Optional[int] = None
+    
+    # Attractions
     attractions: Optional[List[str]] = None
+    attractions_with_coords: Optional[List[AttractionWithCoords]] = None
 
 
 # Routes
@@ -101,9 +116,18 @@ async def plan_trip(request: TripRequest):
             place=result.place,
             has_weather=result.has_weather,
             has_places=result.has_places,
+            latitude=result.latitude,
+            longitude=result.longitude,
             temperature=result.temperature,
             precipitation_chance=result.precipitation_chance,
-            attractions=result.attractions
+            attractions=result.attractions,
+            attractions_with_coords=[
+                AttractionWithCoords(
+                    name=attr.name,
+                    latitude=attr.latitude,
+                    longitude=attr.longitude
+                ) for attr in result.attractions_with_coords
+            ] if result.attractions_with_coords else None
         )
         
     except Exception as e:
@@ -149,5 +173,4 @@ async def get_info():
 
 if __name__ == "__main__":
     import uvicorn
-    port = int(os.environ.get("PORT", 8000))
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    uvicorn.run(app, host="0.0.0.0", port=8000)
