@@ -1,5 +1,7 @@
-// API endpoint
-const API_URL = 'http://localhost:8000/plan-trip';
+// API endpoint - automatically uses current domain
+const API_URL = window.location.hostname === 'localhost' 
+    ? 'http://localhost:8000/plan-trip'
+    : `${window.location.protocol}//${window.location.host}/plan-trip`;
 
 // DOM elements
 const tripForm = document.getElementById('tripForm');
