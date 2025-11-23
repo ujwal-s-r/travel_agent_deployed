@@ -18,6 +18,20 @@ app = FastAPI(
     version="1.0.0"
 )
 
+# Startup validation
+@app.on_event("startup")
+async def startup_event():
+    """Validate required environment variables on startup"""
+    mistral_key = os.getenv("mistral_api_key")
+    if not mistral_key or mistral_key.strip() == "":
+        print("⚠️  WARNING: mistral_api_key environment variable is not set!")
+        print("⚠️  The API will not work properly without this key.")
+        print("⚠️  Please set mistral_api_key in your Railway environment variables.")
+    else:
+        print("✓ mistral_api_key is configured")
+        print(f"✓ API starting on port {os.environ.get('PORT', '8000')}")
+    print("✓ Tourism AI Agent is starting...")
+
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
@@ -80,13 +94,27 @@ async def read_root():
     return FileResponse("templates/index.html")
 
 
+@app.get("/favicon.ico")
+async def favicon():
+    """Return 204 No Content for favicon requests"""
+    from fastapi import Response
+    return Response(status_code=204)
+
+
 @app.get("/health")
 async def health_check():
-    """Health check endpoint"""
+    """Health check endpoint with configuration status"""
+    mistral_configured = bool(os.getenv("mistral_api_key") and os.getenv("mistral_api_key").strip())
+    
     return {
-        "status": "healthy",
+        "status": "healthy" if mistral_configured else "degraded",
         "service": "Tourism AI Agent",
-        "version": "1.0.0"
+        "version": "1.0.0",
+        "configuration": {
+            "mistral_api_key": "configured" if mistral_configured else "missing",
+            "port": os.environ.get("PORT", "8000")
+        },
+        "message": "All systems operational" if mistral_configured else "API key not configured - service will not work"
     }
 
 
@@ -102,6 +130,14 @@ async def plan_trip(request: TripRequest):
         ChatResponse with weather and tourist attractions
     """
     try:
+        # Validate API key is configured
+        if not os.getenv("mistral_api_key") or os.getenv("mistral_api_key").strip() == "":
+            return ChatResponse(
+                response="The API is not properly configured. Please contact the administrator.",
+                success=False,
+                error="Missing mistral_api_key environment variable. Please configure it in Railway."
+            )
+        
         if not request.query or not request.query.strip():
             raise HTTPException(status_code=400, detail="Query cannot be empty")
         

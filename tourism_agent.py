@@ -24,6 +24,11 @@ class MistralLLM(LLM):
     temperature: float = 0.7
     max_tokens: int = 1000
     
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        if not self.api_key or self.api_key.strip() == "":
+            print("⚠️  WARNING: MistralLLM initialized without API key!")
+    
     @property
     def _llm_type(self) -> str:
         return "mistral_gpt_oss"
@@ -51,6 +56,9 @@ class MistralLLM(LLM):
         }
         
         try:
+            if not self.api_key or self.api_key.strip() == "":
+                return "Error: API key not configured. Please set mistral_api_key environment variable."
+            
             response = requests.post(url, headers=headers, json=data, timeout=60)
             response.raise_for_status()
             
@@ -76,6 +84,14 @@ class MistralLLM(LLM):
                     return result["choices"][0]["message"]["content"]
                 return "No response generated"
                 
+        except requests.exceptions.HTTPError as e:
+            if e.response.status_code == 401:
+                return "Error: Invalid API key. Please check your mistral_api_key configuration."
+            elif e.response.status_code == 403:
+                return "Error: API key does not have access. Please verify your subscription."
+            return f"Error: API request failed with status {e.response.status_code}"
+        except requests.exceptions.Timeout:
+            return "Error: API request timed out. Please try again."
         except Exception as e:
             return f"Error: {str(e)}"
 
